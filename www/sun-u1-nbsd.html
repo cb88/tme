@@ -1,0 +1,507 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<title>Emulate a Sun Ultra 1 running NetBSD</title>
+</head>
+<body>
+
+<h1>Emulate a Sun Ultra 1 running NetBSD</h1>
+
+<i>June 6 2010</i>
+
+<p>
+<b>Warning:</b> This is alpha-quality software.  Don't count on it for anything.
+Use it at your own risk.
+
+<hr>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="sun-u1-nbsd.html#intro">Introduction</a>
+<li><a href="sun-u1-nbsd.html#getting">Getting the <tt>tme</tt> software</a>
+<li><a href="sun-u1-nbsd.html#data">Making the machine-specific data</a>
+<!-- XXX FIXME contents -->
+<li><a href="sun-u1-nbsd.html#install">Installing NetBSD 5.0.1</a>
+  <ul>
+  <li><a href="sun-u1-nbsd.html#install-iso">Getting the NetBSD install CD-ROM image</a>
+  <li><a href="sun-u1-nbsd.html#install-rd">Booting and using the NetBSD install CD-ROM</a>
+  <li><a href="sun-u1-nbsd.html#sysinst">Running <tt>sysinst</tt></a>
+  </ul>
+<li><a href="sun-u1-nbsd.html#notes">Notes, bugs, etc.</a>
+</ul>
+
+<hr>
+<a name="intro">
+<h2>Introduction</h2>
+
+<a href="index.html">The Machine Emulator</a>, or <tt>tme</tt>, is a
+program that provides a general-purpose framework for computer
+emulation.  <tt>tme</tt> can emulate a Sun Ultra 1.
+<p>
+
+<hr>
+<a name="getting">
+<h2>Getting the <tt>tme</tt> software</h2>
+
+<ol>
+
+<li>
+Find a fast machine to be the host.  The faster, the better.
+<p>
+
+<li>
+Follow all of the instructions for getting, building, and installing
+<tt>tme</tt> found under
+<a href="index.html">http://csail.mit.edu/~fredette/tme/</a>.  If
+you want the emulated Sun Ultra 1 to have network access, be sure to follow
+the instructions about enabling <tt>tme</tt> to access the network.
+<p>
+
+<li>
+Download the Sun Ultra 1 501-3082-update7 ROM, the SBus cgthree 501-1415 ROM, and the SBus cgsix 501-2325 ROM:
+<p>
+<a href="SUNW,501-3082-update7.bin">http://csail.mit.edu/~fredette/tme/SUNW,501-3082-update7.bin</a>
+<br>
+<a href="SUNW,501-1415.bin">http://csail.mit.edu/~fredette/tme/SUNW,501-1415.bin</a>
+<br>
+<a href="SUNW,501-2325.bin">http://csail.mit.edu/~fredette/tme/SUNW,501-2325.bin</a>
+<p>
+<b>If Sun asks me to stop distributing these ROMs, I will.</b>
+<p>
+
+</ol>
+
+<hr>
+<a name="data">
+<h2>Making the machine-specific data</h2>
+
+It's best to create a new working directory for each emulated machine
+you create.  This directory will contain the configuration files and
+disk image for that machine.
+<p>
+
+In general, any working directory filename that begins with
+<tt>my-</tt> or <tt>MY-</tt> is a file that is specific to your
+individual emulated machine.  With the exception of the disk image,
+these are mostly text files, and you are encouraged to edit many of
+them to suit yourself.
+
+<pre>
+% <b>mkdir /some/where/my-sun4u</b>
+% <b>cd /some/where/my-sun4u</b>
+</pre>
+
+<p>
+Now populate this directory:
+
+<ol>
+
+<li>
+Copy the <tt>SUN-ULTRA-1</tt> machine description file into the working directory:
+
+<pre>
+% <b>cp /usr/pkg/share/examples/tme/SUN-ULTRA-1 ./MY-SUN4U</b>
+</pre>
+
+This file contains <tt>tmesh</tt> commands that create a Sun Ultra 1.
+If you don't change this file, it creates a Sun Ultra 1 with a
+cgsix framebuffer, type-4 keyboard and mouse, one disk drive, one
+tape drive, and an <b>unconnected</b> network interface.
+<p>
+
+<blockquote>
+<b>WARNING</b>: Although <tt>tme</tt> enables the cgsix emulation in
+<tt>SUN-ULTRA-1</tt> by default, this is only because NetBSD/sparc64
+currently does not support a cgthree console.  The <tt>tme</tt> cgsix
+emulation is <b>extremely poor</b>.  It's usable for the OpenBoot and
+NetBSD console, but it will definitely <em>not</em> run X.
+</blockquote>
+
+If you can't use the emulated framebuffer (because, for example, you
+aren't running X or didn't build <tt>tme</tt> with GTK), you must edit
+this file to disable the GTK-based display and enable the serial
+console instead.  Comments in the <tt>MY-SUN4U</tt> file should
+explain how to do this.
+
+<li>
+Copy the ROM images into the working directory:
+
+<pre>
+% <b>cp /some/where/SUNW,501-3082-update7.bin .</b>
+% <b>cp /some/where/SUNW,501-1415.bin .</b>
+% <b>cp /some/where/SUNW,501-2325.bin .</b>
+</pre>
+<p>
+
+<li>
+Make a Sun Ultra 1 NVRAM file in the working directory:
+<p>
+The Sun Ultra 1 NVRAM contents are kept in a file.  Creating an 
+initial NVRAM file involves writing a file with a specific number 
+of zeroes.
+<p>
+<pre>
+% <b>dd if=/dev/zero bs=1 count=8176 of=my-sun4u-nvram.bin</b>
+</pre>
+<p>
+
+<li>
+If you do want to use the GTK-based display, copy the Sun keyboards
+map, and keyboard macros file into the working directory:
+
+<pre>
+% <b>cp /usr/pkg/share/examples/tme/sun-keyboards.txt .</b>
+% <b>cp /usr/pkg/share/examples/tme/my-sun-macros.txt ./my-sun-macros.txt</b>
+</pre>
+
+You should not edit the <tt>sun-keyboards.txt</tt> file, however you may want
+to edit the <tt>my-sun-macros.txt</tt> file.  The two files work together to
+transform key events on your keyboard into Sun type-4 scan codes.
+<p>
+
+The <tt>sun-keyboards.txt</tt> file lists all of the symbols (in X
+terminology, all of the "keysyms") on a Sun type-4 keyboard, and gives
+for each keysym a Sun type-4 scan code and some modifier information.
+Because Sun type-4 keyboards are never going to change, you shouldn't
+change this file, even if you think it lists keysyms that your
+keyboard doesn't have, like <tt>L1</tt>, <tt>R11</tt>, etc.
+<p>
+
+The <tt>my-sun-macros.txt</tt> file is meant to adapt your keyboard 
+to the Sun type-4 keyboard.  Any keysyms that the Sun type-4 keyboard
+has, that your keyboard doesn't have, can be generated by macros added
+to this file.  For example, <tt>tmesh</tt> may complain that:
+
+<pre>
+[/display0.0]: cannot generate keysym 'R9' directly, or through a macro: No such file or directory
+</pre>
+
+The odds are good that you don't care about generating the <tt>R9</tt> key -
+it's one of the keysyms on the strange, original Sun numeric keypad.  But
+if you absolutely must be able to generate the <tt>R9</tt> key, you could
+add a line similar to the following to your <tt>my-sun-macros.txt</tt> file:
+
+<pre>
+Alt_R F9 = R9
+</pre>
+
+Then, you could simulate pressing <tt>R9</tt> by pressing the right
+<tt>Alt</tt> key and then the <tt>F9</tt> key.
+<p>
+
+The <tt>my-sun-macros.txt</tt> that you copied from <tt>sun-macros.txt</tt>
+contains a small number of macros for generating the <tt>L1</tt>, <tt>L2</tt>,
+etc., keys.  These macros should be sufficient for general use - simply ignore
+the <tt>tmesh</tt> warnings about other, obscure keysyms.
+<p>
+
+Under X, to learn about the keysyms present on your keyboard, the
+<tt>xmodmap -pk</tt> command will print out your current keyboard map.
+Alternately, the <tt>xev</tt> command may be a more convenient way
+to see what key combinations on your keyboard generate which keysyms.
+<p>
+
+<li>
+Create the empty disk image file.  Decide how big you want the emulated
+disk to be, in bytes, and substitute that number for <i>NNNNNNNN</i> below:
+
+<pre>
+% <b>dd if=/dev/zero of=my-sun4u-disk.img bs=1 count=1 seek=</b><i>NNNNNNNN</i>
+</pre>
+
+It's not immediately wasteful to choose a very large disk size - this
+<tt>dd</tt> command will create a disk image that initially takes up
+almost zero real space on your host's disk.  Only as the disk is populated
+will your host's operating system allocate more real space to the image.
+<p>
+
+</ol>
+
+<hr>
+<a name="install">
+<h2>Installing NetBSD 5.0.1</h2>
+
+Installing NetBSD in the emulator is very similar to installing it on
+a real Sun Ultra 1.  This is good, because it allows developers to
+experience and debug installation problems in the emulator.
+<p>
+
+<a name="install-iso">
+<h3>Getting the NetBSD install CD-ROM image</h3>
+
+NetBSD installation on <tt>tme</tt> uses a CD-ROM image.  While an
+image of any vendor's NetBSD/sparc64 CD-ROM should work, only the
+<a href="http://www.netbsd.org/Releases/formal-5/">NetBSD 5.0.1</a>
+official sparc CD-ROM image was tested.
+<p>
+
+The CD-ROM image must be downloaded and stored on your host machine,
+in your <tt>/some/where/my-sun4u/</tt> directory.
+<p>
+
+Download the official NetBSD/sparc64 CD-ROM image from a
+<a href="http://www.netbsd.org/mirrors/#iso">mirror</a> close to you.
+The pathname to the image is <tt>/pub/NetBSD/iso/5.0.1/sparc64cd-5.0.1.iso</tt>
+or something similar.  You may also be able to download this image as a 
+<a href="http://www.netbsd.org/mirrors/#bittorrent">BitTorrent</a>.
+<p>
+
+<a name="install-rd">
+<h3>Booting and using the NetBSD install CD-ROM</h3>
+
+Once you have an installation CD-ROM image, you must boot it.
+<p>
+
+<ol>
+<li>
+Start the emulator.  <b>Remember, if you're running a
+statically-linked, uninstalled emulator, you must have the environment
+variable <tt>LTDL_LIBRARY_PATH</tt> set to the top of your build
+tree:</b>
+<p>
+
+<tt>% <b>cd /some/where/my-sun4u</b></tt><br>
+<tt>% <b>tmesh ./MY-SUN4U</b></tt><br>
+<i>ignore any <tt>cannot generate keysym</tt> warnings</i></br>
+<tt>tmesh&gt;</tt>
+<p>
+
+The emulator itself is called <tt>tmesh</tt>.  <tt>tmesh</tt> is a
+shell for running commands that create and control emulated machines.
+One day, you will be able to create and manage a whole set
+of emulated machines running inside the same <tt>tmesh</tt> process,
+but for now it's only been tested to handle one machine.
+<p>
+
+<tt>tmesh</tt> takes one argument on its command line: the name of a
+text file containing initial commands for it to execute.  In this
+case, <tt>MY-SUN4U</tt> contains commands to assemble a Sun Ultra 1.
+<p>
+
+A new blank GTK window should appear on your screen.  If you
+see any error messages, hopefully they're descriptive enough to help
+you figure out what went wrong.  Usually, the first error listed is
+the real problem; when a central element of the emulated Sun Ultra 1
+can't be created, many subsequent errors will be generated because all
+of the attachments to that central element also fail.
+<p>
+
+If you don't see any error messages, at this <tt>tmesh&gt;</tt>
+prompt, give the <tt>ls</tt> command.  This should give the following
+output:
+
+<pre>
+tmesh&gt; <b>ls</b>
+sc0: tme/ic/stp2200
+cpu0 at sc0 addr 0x1c000000000: tme/ic/stp1030 tick-frequency 167M fpu-type builtin fpu-compliance partial fpu-incomplete trap
+sbus0 at sc0 addr 0x1fe00000000: tme/ic/stp2220
+ram0 at sc0 addr 0x00000000: tme/host/posix/memory ram 32MB
+flash0 at sbus0 slot 15 offset 0x0000000: tme/host/posix/memory rom SUNW,501-3082-update7.bin
+zs0 at sbus0 slot 15 offset 0x1100000: tme/ic/ncr89c105/z85c30
+zs1 at sbus0 slot 15 offset 0x1000000: tme/ic/ncr89c105/z85c30
+nvram0 at sbus0 slot 15 offset 0x1200000: tme/host/posix/memory persistent my-sun4u-nvram.bin
+clock0 at sbus0 slot 15 offset 0x1201ff0: tme/machine/sun4/clock type tme/ic/mk48t59
+fdtwo0 at sbus0 slot 15 offset 0x1400000: tme/ic/ncr89c105/i82077
+auxio0 at sbus0 slot 15 offset 0x1900000: tme/ic/ncr89c105/auxio
+apcdma0 at sbus0 slot 13 offset 0x0: tme/ic/stp2024 id 0x3
+audiocs0 at apcdma0 codec: tme/ic/cs4231A
+kbd0 at zs1 channel A: tme/serial/keyboard type sun-type-4-us macros my-sun-macros.txt map sun-keyboards.txt rate 20
+ms0 at zs1 channel B: tme/serial/mouse type mousesystems-5
+console0 at zs0 channel A: tme/host/posix/serial device /dev/ttyr0 break-carats
+esp0 at sbus0 slot 14 offset 0x8800000: tme/ic/lsi64854 revision 1+ channel scsi
+esp0 dma at sbus0 slot 14 offset 0x8400000
+ncr0 at esp0 master: tme/ic/ncr53c9x variant esp100
+scsibus0 at ncr0: tme/scsi/bus
+ledma0 dma at sbus0 slot 14 offset 0x8400010: tme/ic/lsi64854 revision 2 channel ethernet
+ledma0 at sbus0 slot 14 offset 0x8c00000
+le0 at ledma0 master: tme/ic/am7990
+bpp0 at sbus0 slot 14 offset 0xc800000: tme/ic/lsi64854 revision 1+ channel parallel
+cgsix0 at sbus0 slot 0 offset 0x0: tme/bus/sbus/cgsix type 501-2325
+cgsixrom0 at sbus0 slot 0 offset 0x0: tme/host/posix/memory rom SUNW,501-2325.bin
+display0 at cgsix0: tme/host/gtk/display
+display0 at kbd0
+display0 at ms0
+sd0 at scsibus0: tme/scsi/disk id 0 type tme-scsi-1
+disk0 at sd0: tme/host/posix/disk file my-sun4u-disk.img
+st0 at scsibus0: tme/scsi/tape id 4 type tme-scsi-1
+tape0 at st0: tme/host/posix/tape
+</pre>
+<p>
+
+If the output contains all of these entries, your emulated Sun Ultra 1
+is ready to run.
+
+<li>
+The next step is to load the install CD-ROM image into the CD-ROM drive:
+
+<blockquote>
+<b>WARNING</b>: Unfortunately, the current release of <tt>tme</tt>
+doesn't have true CD-ROM emulation.  Temporarily, the modules that
+emulate regular disks are being reused to create a minimal CD-ROM
+emulation.
+<p>
+What this means is that the CD-ROM emulation isn't very useful except
+for installation.  For this reason, the CD-ROM emulation isn't enabled
+by default in the configuration file, and you have to give these long
+commands here to enable it:
+</blockquote>
+
+<pre>
+tmesh&gt; <b>cd0 at scsibus0: tme/scsi/cdrom id 6 type tme-scsi-1</b>
+tmesh&gt; <b>cdrom0 at cd0: tme/host/posix/disk file sparc64cd-5.0.1.iso read-only</b>
+</pre>
+
+<li>
+Now you should be able to power up the emulated Sun Ultra 1:
+
+<pre>
+tmesh&gt; <b>command sc0 power</b>
+</pre>
+
+After a while (the Sun Ultra 1 PROM includes some unfortunate delays), you should see
+something like this:
+<p>
+
+<!-- converting: xwdtopnm | pnmtopng -->
+<img src="sun-u1-nbsd-0.png" alt="Initial PROM banner">
+<p>
+
+Because you started out with an NVRAM full of zeroes, the PROM set
+the <tt>diag-switch?</tt> parameter to <tt>true</tt> and tried to boot
+off of the network, which (assuming that you haven't enabled <tt>tme</tt> to
+access and boot off of the network yet) failed.
+<p>
+
+Before installing NetBSD, it's best to set the IDPROM information
+in the NVRAM.  The following procedure is derived from the
+<a href="http://www.squirrel.com/sun-nvram-hostid.faq.html">
+Sun NVRAM/hostid FAQ</a>.
+<p>
+
+First, you must choose an Ethernet address for your
+emulator - <em>even if <tt>tme</tt> won't have access to the
+network</em>.  Ethernet addresses for Sun workstations always begin
+with <tt>8:0:20</tt>, so pick three hexadecimal bytes
+<tt>XX:YY:ZZ</tt> such that <tt>8:0:20:XX:YY:ZZ</tt> is not taken by
+any other machine on your LAN.
+<p>
+
+Next, set the IDPROM information with these OpenBoot commands, substituting
+for the <i>XX</i>, <i>YY</i> and <i>ZZ</i> (note that there are two of
+each):
+<pre>
+ok <b>1 0 mkp</b>
+ok <b>80 1 mkp</b>
+ok <b>8 2 mkp</b>
+ok <b>0 3 mkp</b>
+ok <b>20 4 mkp</b>
+ok <b><i>XX</i> 5 mkp</b>
+ok <b><i>YY</i> 6 mkp</b>
+ok <b><i>ZZ</i> 7 mkp</b>
+ok <b>0 8 mkp</b>
+ok <b>0 9 mkp</b>
+ok <b>0 a mkp</b>
+ok <b>0 b mkp</b>
+ok <b><i>XX</i> c mkp</b>
+ok <b><i>YY</i> d mkp</b>
+ok <b><i>ZZ</i> e mkp</b>
+ok <b>0 f 0 do i idprom@ xor loop f mkp</b>
+</pre>
+
+Now you can turn the diagnostics switch off:
+<pre>
+ok <b>setenv diag-switch? false</b>
+diag-switch? =        false
+ok
+</pre>
+
+Now, tell the PROM to boot the install CD-ROM:
+
+<pre>
+ok <b>boot cdrom</b>
+</pre>
+
+After a short delay, the PROM should begin booting the install CD-ROM image:
+<p>
+
+<img src="sun-u1-nbsd-1.png" alt="Loading the INSTALL kernel">
+<p>
+
+Once the INSTALL kernel has been booted, the installation
+RAM disk will display the first prompt:
+<p>
+
+<img src="sun-u1-nbsd-2.png" alt="The installation terminal type prompt">
+<p>
+
+<b>You do want to enter <tt>sun-type4</tt>, since <tt>tme</tt>
+emulates a Sun type-4 keyboard.</b>  After that, <tt>sysinst</tt>
+will start.
+<p>
+
+</ol>
+
+<a name="sysinst">
+<h3>Running <tt>sysinst</tt></h3>
+
+Now you should follow the traditional
+<a href="ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-5.0.1/sparc64/INSTALL.html">
+NetBSD/sparc64 installation procedure</a>.
+<p>
+
+Some notes and hints:
+<p>
+
+<ul>
+<li>Depending on the speed of your host, it may take a while for
+<tt>newfs</tt> to make filesystems, and for <tt>MAKEDEV</tt> to make
+devices.  (This can be true even on a real Sun Ultra 1.)
+</ul>
+<p>
+
+<li>When you're done with <tt>sysinst</tt>, from its main menu
+select <tt>Exit Install System</tt>.  This will return you to
+the PROM <tt>ok</tt> prompt, and <tt>boot</tt> should boot the
+new installation.
+
+<p>
+
+<li>Now that the system has been fully installed, you may want to
+add a line to <tt>MY-SUN4U</tt> to automatically power up the
+machine each time you start <tt>tmesh</tt>:
+<p>
+<pre>
+% <b>echo 'command sc0 power' >> MY-SUN4U</b>
+</pre>
+</p>
+
+</ol>
+
+<hr>
+<a name="notes">
+<h2>Notes, bugs, etc.</h2>
+
+<ul>
+<li>
+The emulator doesn't keep time well at all.  The emulator process
+itself yields whenever the NetBSD kernel <i>inside the emulator</i> is
+idle; this is good because then the emulator process doesn't consume
+all of the host's CPU.  However, the effective clock interrupt
+frequency when the emulator is idling is much less than it's supposed
+to be.  (I usually get 50Hz instead of the normal 100Hz.  This might be
+some sort of Nyquist type effect, since the host's clock is only
+running at the same 100Hz?)
+<p>
+<li>
+<tt>tmesh</tt> has no <tt>quit</tt> command yet.  The only way to 
+terminate the emulator for now is to Control-C it.
+</ul>
+<p>
+
+<hr>
+Copyright &copy; 2010 Matt Fredette, All Rights Reserved<br>
+<i>$Revision: 1.1 $</i>
+
+</body>
+</html>

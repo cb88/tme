@@ -1,0 +1,283 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<html>
+<head>
+<title>The Machine Emulator</title>
+</head>
+<body>
+
+<h1>The Machine Emulator</h1>
+
+<i>June 6 2010</i>
+
+<p>
+<b>Warning:</b> This is alpha-quality software.  Don't count on it for anything.
+Use it at your own risk.
+
+<hr>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="index.html#intro">Introduction</a>
+<li><a href="index.html#getting">Getting the <tt>tme</tt> software</a>
+<li><a href="index.html#system">Preparing your system</a>
+  <ul>
+  <li><a href="index.html#system-bpf">Ethernet access on BSD-based systems with BPF</a>
+  <li><a href="index.html#system-tty">Serial line access on POSIX-like systems</a>
+  </ul>
+<li><a href="index.html#emu">The different emulations</a>
+  <ul>
+  <li><a href="index.html#sun2-120-nbsd">Emulate a Sun 2/120 running NetBSD</a>
+  <li><a href="index.html#sun3-150-nbsd">Emulate a Sun 3/150 running NetBSD</a>
+  <li><a href="index.html#sun4-75-nbsd">Emulate a SPARCstation 2 running NetBSD</a>
+  <li><a href="index.html#sun-u1-nbsd">Emulate a Sun Ultra 1 running NetBSD</a>
+  </ul>
+<li><a href="index.html#notes">Notes, bugs, etc.</a>
+<li><a href="index.html#older">Previous versions</a>
+</ul>
+
+<hr>
+<a name="intro">
+<h2>Introduction</h2>
+
+The Machine Emulator, or <tt>tme</tt>, provides a general-purpose
+framework for computer emulation.  The goal is to create a large
+library of modules, each emulating a specific computer chip, or bus,
+or board, etc.  These modules offer standard interfaces that allow you
+to connect them together to create a whole machine emulation with a
+minimum of effort.
+
+<p>
+While these assembled machine emulations will likely never be as fast
+as a single program designed from the beginning to emulate a specific
+machine, the standard module interfaces should be reasonably fast.
+Even though the best abstract interfaces still introduce overhead and
+can't always express certain optimization hints, reusability will always
+save a lot of development time, and performance problems can be
+addressed by faster hardware.
+
+<hr>
+<a name="getting">
+<h2>Getting the <tt>tme</tt> software</h2>
+
+<ol>
+
+<li>Download the latest version of <tt>tme</tt>:
+<p>
+<a href="tme-0.8.tar.gz">http://csail.mit.edu/~fredette/tme/tme-0.8.tar.gz</a>
+<p>
+
+<tt>tme</tt> can build without any third-party libraries or programs.
+However:
+
+<ul>
+
+<li>If you have GTK installed, <tt>tme</tt> can use it to provide
+framebuffer, keyboard, and mouse support to modules that emulate those
+things.
+
+<li>If you want to modify certain source files, Perl is required to
+regenerate a small number of sources.
+
+<li>Perl is also required to run a small number of utility scripts,
+such as <tt>tme-sun-idprom</tt>.  However these scripts can be run
+anywhere - not only on the machine running <tt>tme</tt>.
+
+</ul>
+
+<p>
+<li>
+Unpack and build <tt>tme</tt>.
+<p>
+<b>Note: the emulator is normally built out of plugin modules
+<tt>dlopen</tt>'ed at runtime</b>.  If you intend to install the
+emulation software under <tt>/usr/pkg</tt> or <tt>/usr/local</tt>, as
+long as your <tt>LD_LIBRARY_PATH</tt> includes the relevant
+<tt>lib/</tt> directory, everything should just work.
+<p>
+If you want to use the emulator without installing it, however, you
+should use the <tt>--disable-shared</tt> option when running <tt>configure</tt>,
+to build a statically-linked emulator that will do no <tt>dlopen</tt>ing.
+<b>However, to run a statically-linked, uninstalled emulator, you must
+have the environment variable <tt>LTDL_LIBRARY_PATH</tt> set to the top
+of your build tree.</b>
+<p>
+<b>If your system has GTK but uses <tt>pkg-config</tt> instead of
+a <tt>gtk-config</tt> script</b>, put the following <tt>gtk-config</tt>
+script somewhere in your <tt>PATH</tt> and make it mode 0555:
+<pre>
+#! /bin/sh
+
+module=`pkg-config --list-all | egrep '^gtk\+?-' | head -1 | sed -e 's/^\(.[-a-z0-9_\+\.]*\).*$/\1/'`
+if test "x${module}" = x; then
+  echo "$0: no gtk under pkg-config control" 1>&2
+  exit 1
+fi
+
+args=
+for option
+do
+  if test "${option}" = --version; then
+    option=--modversion
+  fi
+  args="${args} ${option}"
+done
+exec pkg-config ${args} ${module}
+</pre>
+<p>
+This is necessary because I make <tt>tme</tt>'s <tt>configure</tt>
+script with an ancient <tt>gtk.m4</tt>, that predates
+<tt>pkg-config</tt>.
+<p>
+Otherwise, this is a regular <tt>autoconf</tt> package, so do something like:
+
+<pre>
+% <b>sh ./configure</b>
+% <b>make</b>
+</pre>
+
+Assuming the build succeeds, if you do want to install the emulator,
+then do a <tt>make install</tt>.  The rest of this documentation
+assumes that you have installed the emulator under <tt>/usr/pkg</tt>.
+If you don't install the emulator, you'll have to find the programs
+and files that are referenced in the documentation in the build tree.
+<p>
+
+</ol>
+
+<hr>
+<a name="system">
+<h2>Preparing your system</h2>
+
+Full emulation of certain kinds of elements, like the Ethernet and
+serial lines, requires certain permissions on the host running
+<tt>tme</tt>.  If you don't intend to allow <tt>tme</tt> to access the
+network or serial ports on your machine, you can ignore this
+section.
+
+<a name="system-bpf">
+<h3>Ethernet access on BSD-based systems with BPF</h3>
+
+<p>
+The only Ethernet access method currently supported by <tt>tme</tt> is
+the Berkely Packet Filter (BPF), usually available on BSD-based
+systems.  If you want the emulator to be visible on your local
+Ethernet, the emulator must be able to open a <tt>bpf(4)</tt> device
+for reading and writing.
+
+<p>
+Normally, <tt>/dev/bpf<i>N</i></tt> devices can only be opened by
+<tt>root</tt>, so you have one of two choices:
+
+<p>
+<ol>
+
+<li>Run the emulator as <tt>root</tt>.  <b>This is not
+recommended</b>, since the emulator won't give away its <tt>root</tt>
+privileges, running as <tt>root</tt> the entire time.  Bugs could
+cause it to do real damage to the host.
+
+<li>Make a <tt>/dev/bpf</tt> device usable by the user that will be
+running the emulator.  If this user is in group <tt>wheel</tt> on the
+host machine, the <tt>/dev/bpf</tt> devices are usually group
+<tt>wheel</tt>, mode 0600, so one solution is to make
+<tt>/dev/bpf0</tt> mode 0660.  You may want to do something different.
+
+</ol>
+<p>
+
+<a name="system-tty">
+<h3>Serial line access on POSIX-like systems</h3>
+
+<p>
+On POSIX-like systems, <tt>tme</tt> can connect the real serial lines
+and pseudoterminals on your host to emulated serial lines.  This is
+always done with the <tt>tme/host/posix/serial</tt> module, which
+takes a <tt>device</tt> argument with the name of any <tt>tty(4)</tt>
+device you want it to use.
+
+<p>
+Usually, permissions prevent the user running the emulator from connecting
+to the real serial lines in the host.  So, you have one of two choices:
+
+<p>
+<ol>
+
+<li>Run the emulator as <tt>root</tt>.  <b>This is not
+recommended</b>, since the emulator won't give away its <tt>root</tt>
+privileges, running as <tt>root</tt> the entire time.  Bugs could
+cause it to do real damage to the host.
+
+<li>Make the device usable by the user that will be running the
+emulator.  If this user is in group <tt>wheel</tt> on the host
+machine, the <tt>/dev/tty</tt> devices are usually group
+<tt>wheel</tt>, mode 0600, so one solution is to make
+<tt>/dev/tty00</tt> mode 0660.  You may want to do something different.
+
+</ol>
+
+<p>
+Pseudoterminals generally don't have restrictive permissions, so they
+may be a more suitable choice for connecting to emulated serial ports.
+You can use one side of a <tt>pty(4)</tt> pseudoterminal pair with
+the <tt>tme/host/posix/serial</tt> module, however you must specify
+exactly which side of which pair you want to use - the emulator won't
+find a free pseudoterminal at runtime.
+
+<p>
+You should then be able to use any serial communications program -
+like <tt>tip(1)</tt> - on the other side of the pseudoterminal pair to
+access the serial data.  For example, I can have the emulator connect
+<tt>/dev/ttyr0</tt> to the first emulated serial port on an otherwise
+headless Sun 2, and with the following entry added to
+<tt>/etc/remote</tt> I can use <tt>tip sun2</tt> to connect to the Sun
+2's serial console:
+
+<pre>
+sun2:dv=/dev/ptyr0:br#9600:pa=none:dc:
+</pre>
+
+<hr>
+<a name="emu">
+<h2>The different emulations</h2>
+
+These pages describe how to use <tt>tme</tt> to emulate various machines and operating systems.
+
+<a name="sun2-120-nbsd">
+<h3>Emulate a Sun 2/120 running NetBSD</h3>
+
+<tt>tme</tt> can emulate a Sun 2/120 running NetBSD.  <a href="sun2-120-nbsd.html">Read the instructions here.</a>
+
+<a name="sun3-150-nbsd">
+<h3>Emulate a Sun 3/150 running NetBSD</h3>
+
+<tt>tme</tt> can emulate a Sun 3/150 running NetBSD.  <a href="sun3-150-nbsd.html">Read the instructions here.</a>
+
+<a name="sun4-75-nbsd">
+<h3>Emulate a SPARCstation 2 running NetBSD</h3>
+
+<tt>tme</tt> can emulate a SPARCstation 2 running NetBSD.  <a href="sun4-75-nbsd.html">Read the instructions here.</a>
+
+<a name="sun-u1-nbsd">
+<h3>Emulate a Sun Ultra 1 running NetBSD</h3>
+
+<tt>tme</tt> can emulate a Sun Ultra 1 running NetBSD.  <a href="sun-u1-nbsd.html">Read the instructions here.</a>
+
+<p>
+
+<hr>
+<a name="older">
+<h2>Previous versions</h2>
+
+<a href="tme-0.6.tar.gz">tme-0.6.tar.gz</a><br>
+<a href="tme-0.4.tar.gz">tme-0.4.tar.gz</a><br>
+<a href="tme-0.2.tar.gz">tme-0.2.tar.gz</a><br>
+<a href="tme-0.0.tar.gz">tme-0.0.tar.gz</a><br>
+<p>
+
+<hr>
+Copyright &copy; 2003, 2005, 2007, 2010 Matt Fredette, All Rights Reserved<br>
+<i>$Revision: 1.7 $</i>
+
+</body>
+</html>
