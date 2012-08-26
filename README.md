@@ -22,7 +22,7 @@ Build Instructions:
 
 Setup:
 
-	
+http://people.csail.mit.edu/fredette/tme/sun4-75-nbsd.html	
 
 Running:
 
@@ -45,6 +45,9 @@ I haven't contacted the original developer but will get around to it once I have
 Currently im only going to work on 1.  if someone else wants to work on the rest feel free!
 
 Of course I'll mark 1. done when its done and move on.
+
+Also I intend to mirror documentation from the sun3/4 zoo and original project pages
+just in case something happens to them. 
 
 -cb88
 
