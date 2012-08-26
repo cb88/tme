@@ -38,7 +38,7 @@ otherwise it isn't going to work:
 I haven't contacted the original developer but will get around to it once I have something to show.
 
 1. My todo is to fix Linux and uptodate GCC support, 
-2 .Perhaps remove libltdl, convert it to libdl or something to improve the situation.
+2. Perhaps remove libltdl, convert it to libdl or something to improve the situation.
 3. Change GUI to SDL like QEMU since gtk is a sinking bloatship.
 4. Improve non BSD networking.
 
