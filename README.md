@@ -2,7 +2,7 @@ The purpose of this project is to mirror code at:
 
 	http://people.csail.mit.edu/fredette/tme/tme-0.8.tar.gz
 
-Build Instructions :
+Build Instructions:
 	
 	tar xzf glib-1.2.10.tar.gz
 	cd glib-1.2.10
@@ -19,6 +19,20 @@ Build Instructions :
 	./configure --disable-shared
 	make
 	make install (as root)
+
+Setup:
+
+	
+
+Running:
+
+Add the following lines or similar at appropriate places in your .profile or .basrc
+otherwise it isn't going to work:
+
+	echo "PATH=$PATH:/usr/local/bin;export PATH"
+	echo "LTDL_LIBRARY_PATH=/usr/local/lib;export LTDL_LIBRARY_PATH"
+
+
 
 
 I haven't contacted the original developer but will get around to it once I have something to show.
