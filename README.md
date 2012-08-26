@@ -2,6 +2,25 @@ The purpose of this project is to mirror code at:
 
 	http://people.csail.mit.edu/fredette/tme/tme-0.8.tar.gz
 
+Build Instructions :
+	
+	tar xzf glib-1.2.10.tar.gz
+	cd glib-1.2.10
+	./configure
+	make
+	make install (as root)
+	tar xzf	gtk+-1.2.10.tar.gz
+	cd gtk+-1.2.10
+	./configure
+	make
+	make install (as root)
+	tar xzf tme-0.4.tar.gz
+	cd tme-0.4
+	./configure --disable-shared
+	make
+	make install (as root)
+
+
 I haven't contacted the original developer but will get around to it once I have something to show.
 
 1. My todo is to fix Linux and uptodate GCC support, 
